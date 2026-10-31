@@ -1,4 +1,4 @@
-import os, json, torch, subprocess, requests, zipfile, io
+import os, json, torch, subprocess, urllib.request, zipfile, io
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 from huggingface_hub import HfApi
@@ -41,9 +41,12 @@ def main():
 
     print("\n3. 极速下载预编译量化工具...")
     api_url = "https://api.github.com/repos/ggerganov/llama.cpp/releases/latest"
-    response = requests.get(api_url).json()
+    req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
+    with urllib.request.urlopen(req) as response:
+        data = json.loads(response.read().decode())
+        
     download_url = None
-    for asset in response.get("assets", []):
+    for asset in data.get("assets", []):
         if "bin-ubuntu-x64.zip" in asset["name"]:
             download_url = asset["browser_download_url"]
             break
@@ -52,9 +55,10 @@ def main():
         raise Exception("❌ 未找到官方预编译包链接")
     
     print(f"正在下载: {download_url}")
-    r = requests.get(download_url)
-    with zipfile.ZipFile(io.BytesIO(r.content)) as z:
-        z.extractall("./llama-bin")
+    req = urllib.request.Request(download_url, headers={'User-Agent': 'Mozilla/5.0'})
+    with urllib.request.urlopen(req) as response:
+        with zipfile.ZipFile(io.BytesIO(response.read())) as z:
+            z.extractall("./llama-bin")
     
     print("\n4. 转换并量化 GGUF...")
     subprocess.run("python llama.cpp/convert_hf_to_gguf.py merged_model --outtype f16 --outfile qwen-ha-ha-ha-f16.gguf", shell=True, check=True)
@@ -70,7 +74,6 @@ def main():
     print("\n5. 正在上传所有 GGUF 文件到 Hugging Face...")
     api = HfApi()
     
-    # 🔥 核心加强：只找 .gguf 文件，且如果没找到直接报错
     gguf_files = [f for f in os.listdir(".") if f.endswith(".gguf")]
     if not gguf_files:
         raise ValueError("❌ 严重错误：当前目录下没有任何 .gguf 文件，转换步骤可能失败了！")
