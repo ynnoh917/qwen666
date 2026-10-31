@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
     args = TrainingArguments(
         output_dir="./lora_out", per_device_train_batch_size=4, gradient_accumulation_steps=2,
-        num_train_epochs=8, learning_rate=1e-4, logging_steps=10, save_strategy="no",
+        num_train_epochs=3, learning_rate=2e-5, logging_steps=10, save_strategy="no",
         report_to="none", use_cpu=True, optim="adamw_torch"
     )
     trainer = Trainer(model=model, args=args, train_dataset=dataset, data_collator=DataCollatorForSeq2Seq(tokenizer=tokenizer, padding=True))
