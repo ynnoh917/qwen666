@@ -1,0 +1,37 @@
+name: Finetune Uncensored Qwen
+
+on:
+  workflow_dispatch:
+
+env:
+  HF_REPO: ${{ vars.HF_REPO }}
+  BASE_MODEL_ID: ${{ vars.BASE_MODEL_ID }}
+
+jobs:
+  finetune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          
+      - name: Install dependencies
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+          
+      - name: Prepare data
+        run: python make_data.py
+        
+      - name: LoRA Finetune
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python train.py
+        
+      - name: Merge and Export GGUF (With Quantization)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python merge_and_export.py
