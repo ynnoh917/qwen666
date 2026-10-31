@@ -18,6 +18,15 @@ jobs:
         with:
           python-version: '3.10'
           
+      # 核心优化：缓存 Pip 和 Hugging Face 的下载文件
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/huggingface
+          key: ${{ runner.os }}-python-${{ hashFiles('requirements.txt') }}
+          
       - name: Install dependencies
         run: |
           pip install torch --index-url https://download.pytorch.org/whl/cpu
@@ -31,7 +40,7 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: python train.py
         
-      - name: Merge and Export GGUF (With Quantization)
+      - name: Merge and Export GGUF (Fast)
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: python merge_and_export.py
