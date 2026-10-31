@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: '3.10'
           
-      # 核心优化：缓存 Pip 和 Hugging Face 的下载文件
+      # 缓存依赖，加速下次运行
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
@@ -44,3 +44,11 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: python merge_and_export.py
+
+      # 🔥 核心新增：将生成的所有 .gguf 文件上传到 GitHub Actions 的 Artifacts
+      - name: Upload GGUF to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Qwen-HaHaHa-Quantized-Models
+          path: "*.gguf"
+          retention-days: 7 # 保留7天
