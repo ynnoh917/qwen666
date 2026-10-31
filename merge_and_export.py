@@ -1,4 +1,4 @@
-import os, json, torch, subprocess, urllib.request, zipfile, io
+import os, json, torch, subprocess
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 from huggingface_hub import HfApi
@@ -39,32 +39,16 @@ def main():
     subprocess.run("git clone --depth 1 https://github.com/ggerganov/llama.cpp.git", shell=True, check=True)
     subprocess.run("pip install -r llama.cpp/requirements/requirements-convert_hf_to_gguf.txt", shell=True, check=True)
 
-    print("\n3. 极速下载预编译量化工具...")
-    api_url = "https://api.github.com/repos/ggerganov/llama.cpp/releases/latest"
-    req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
-    with urllib.request.urlopen(req) as response:
-        data = json.loads(response.read().decode())
-        
-    download_url = None
-    for asset in data.get("assets", []):
-        if "bin-ubuntu-x64.zip" in asset["name"]:
-            download_url = asset["browser_download_url"]
-            break
-    
-    if not download_url:
-        raise Exception("❌ 未找到官方预编译包链接")
-    
-    print(f"正在下载: {download_url}")
-    req = urllib.request.Request(download_url, headers={'User-Agent': 'Mozilla/5.0'})
-    with urllib.request.urlopen(req) as response:
-        with zipfile.ZipFile(io.BytesIO(response.read())) as z:
-            z.extractall("./llama-bin")
-    
+    print("\n3. 局部编译 llama-quantize 工具 (约3-5分钟)...")
+    # 只编译 quantize，节省时间且防止 OOM
+    subprocess.run("cd llama.cpp && cmake -B build -DLLAMA_CURL=OFF", shell=True, check=True)
+    subprocess.run("cd llama.cpp && cmake --build build --config Release --target llama-quantize -j2", shell=True, check=True)
+
     print("\n4. 转换并量化 GGUF...")
     subprocess.run("python llama.cpp/convert_hf_to_gguf.py merged_model --outtype f16 --outfile qwen-ha-ha-ha-f16.gguf", shell=True, check=True)
     
     quant_types = ["Q8_0", "Q5_K_M", "Q4_K_M"]
-    quantize_bin = "./llama-bin/build/bin/llama-quantize" 
+    quantize_bin = "./llama.cpp/build/bin/llama-quantize" 
     
     for q_type in quant_types:
         out_file = f"qwen-ha-ha-ha-{q_type.lower()}.gguf"
